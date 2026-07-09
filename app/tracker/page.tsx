@@ -9,6 +9,7 @@ export default function TrackerPage() {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [schools, setSchools] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
   const [schoolFilter, setSchoolFilter] = useState("all");
@@ -18,6 +19,14 @@ export default function TrackerPage() {
     load();
     fetch("/api/schools").then((r) => r.json()).then(setSchools);
   }, []);
+
+  async function deleteApplicant(id: string, name: string) {
+    if (!confirm(`Delete ${name}? This can't be undone.`)) return;
+    setDeletingId(id);
+    await fetch(`/api/applicants/${id}`, { method: "DELETE" });
+    setDeletingId(null);
+    load();
+  }
 
   function load() {
     setLoading(true);
@@ -130,7 +139,17 @@ export default function TrackerPage() {
                         "-"
                       )}
                     </td>
-                    <td><Link href={`/applicant/${a.id}`} className="btn">Open</Link></td>
+                    <td>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <Link href={`/applicant/${a.id}`} className="btn">Open</Link>
+                        <button
+                          className="btn btn-icon-danger"
+                          onClick={() => deleteApplicant(a.id, a.name)}
+                          disabled={deletingId === a.id}
+                          title="Delete applicant"
+                        >✕</button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}

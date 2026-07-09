@@ -243,6 +243,54 @@ label { font-size: 13px; font-weight: 600; color: var(--text-dim); display: bloc
 .template-card h3 { margin: 0 0 4px 0; font-size: 15px; }
 .template-card pre { white-space: pre-wrap; font-family: inherit; font-size: 13px; color: var(--text-dim); margin: 10px 0; line-height: 1.5; }
 
+/* Snippet grid */
+.snippet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.snippet-grid-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.snippet-grid-top { display: flex; justify-content: space-between; align-items: center; }
+.snippet-grid-title { font-size: 15px; font-weight: 600; margin: 0; }
+.snippet-grid-preview { font-size: 13px; color: var(--text-dim); margin: 0; line-height: 1.5; flex: 1; }
+.snippet-grid-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+/* View toggle */
+.view-toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.view-btn { background: var(--panel); border: none; padding: 8px 14px; font-size: 16px; cursor: pointer; color: var(--text-dim); }
+.view-btn:hover { background: var(--bg); }
+.view-btn.active { background: var(--accent-dim); color: var(--accent); }
+
+/* X delete button */
+.btn-x {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+}
+.btn-x:hover { background: var(--danger-dim); color: var(--danger); }
+
+/* Tracker icon danger button */
+.btn-icon-danger {
+  border-color: var(--border);
+  background: var(--panel);
+  color: var(--text-dim);
+  padding: 8px 10px;
+}
+.btn-icon-danger:hover { background: var(--danger-dim); color: var(--danger); border-color: var(--danger); }
+
 .login-wrap {
   min-height: 100vh;
   display: flex;
