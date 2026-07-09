@@ -262,7 +262,7 @@ export default function SchoolsPage() {
                     </form>
                   ) : (
                     <>
-                      <div className="sc-card-header" onClick={() => setExpandedId(isOpen ? null : s.id)}>
+                      <div className="sc-card-header" onClick={() => setExpandedId(isOpen ? null : s.id)} title="Click to expand">
                         <div>
                           <div className="sc-card-name">{s.name}</div>
                           <div className="sc-card-meta">
@@ -286,8 +286,10 @@ export default function SchoolsPage() {
                           {s.notes && <p className="sc-detail"><strong>Notes:</strong> {s.notes}</p>}
 
                           <div className="sc-counselors-header">
-                            <strong>Counselors</strong>
-                            <button className="btn" onClick={() => { setAddCounselorFor(s.id); setNewCounselor(blankCounselor(s.id)); }}>+ Add counselor</button>
+                            <strong>Counselors ({sc.length})</strong>
+                            <button className="btn btn-primary" onClick={() => { setAddCounselorFor(addCounselorFor === s.id ? null : s.id); setNewCounselor(blankCounselor(s.id)); }}>
+                              {addCounselorFor === s.id ? "Cancel" : "+ Add counselor"}
+                            </button>
                           </div>
 
                           {addCounselorFor === s.id && (

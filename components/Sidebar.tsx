@@ -66,7 +66,7 @@ export default function Sidebar() {
     <>
       {/* Desktop sidebar */}
       <div className="sidebar">
-        <h1>Admissions Tracker</h1>
+        <h1>Admissions Lamp</h1>
         {links.map((l) => (
           <Link key={l.href} href={l.href} className={`nav-link${isActive(l.href) ? " active" : ""}`}>
             {l.label}

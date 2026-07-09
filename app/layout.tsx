@@ -2,8 +2,8 @@ import "./globals.css";
 import AppShell from "@/components/AppShell";
 
 export const metadata = {
-  title: "Admissions Tracker",
-  description: "Personal admissions workflow tool",
+  title: "Admissions Lamp",
+  description: "Admissions Lamp — personal admissions workflow tool",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

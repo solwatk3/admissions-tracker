@@ -36,7 +36,9 @@ export default function NewApplicantPage() {
   }, []);
 
   function loadSchools() {
-    return fetch("/api/schools").then((r) => r.json()).then(setSchools);
+    return fetch("/api/schools").then((r) => r.json()).then((data) =>
+      setSchools(data.map((s: any) => s.name || s))
+    );
   }
 
   function set(field: string, value: string) {

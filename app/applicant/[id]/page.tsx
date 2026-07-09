@@ -22,7 +22,9 @@ export default function ApplicantDetailPage() {
 
   useEffect(() => {
     load();
-    fetch("/api/schools").then((r) => r.json()).then(setSchools);
+    fetch("/api/schools").then((r) => r.json()).then((data) =>
+      setSchools(data.map((s: any) => s.name || s))
+    );
   }, [id]);
 
   function load() {
@@ -197,7 +199,18 @@ export default function ApplicantDetailPage() {
             <div className="contact-log">
               {log.map((entry) => (
                 <div className="contact-entry" key={entry.id}>
-                  <div className="date">{formatDate(entry.created_at.slice(0, 10))}</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                    <div className="date">{formatDate(entry.created_at.slice(0, 10))}</div>
+                    <button
+                      className="btn-x"
+                      title="Delete entry"
+                      onClick={async () => {
+                        if (!confirm("Delete this contact log entry?")) return;
+                        await fetch(`/api/contact-log/${entry.id}`, { method: "DELETE" });
+                        load();
+                      }}
+                    >✕</button>
+                  </div>
                   <div>{entry.entry}</div>
                 </div>
               ))}
