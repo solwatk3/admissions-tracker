@@ -6,42 +6,64 @@ import Link from "next/link";
 import { STAGES } from "@/lib/supabase";
 import { todayStr } from "@/lib/dates";
 
-const LAST_SCHOOL_KEY = "admissions_last_school";
+const blank = () => ({
+  name: "",
+  email: "",
+  phone: "",
+  program: "",
+  school: "",
+  stage: "inquiry",
+  stage_date: todayStr(),
+  next_followup: "",
+  notes: "",
+});
 
 export default function NewApplicantPage() {
   const router = useRouter();
   const [schools, setSchools] = useState<string[]>([]);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    program: "",
-    school: "",
-    stage: "inquiry",
-    stage_date: todayStr(),
-    next_followup: "",
-    notes: "",
-  });
+  const [form, setForm] = useState(blank());
+  const [addingSchool, setAddingSchool] = useState(false);
+  const [newSchoolName, setNewSchoolName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    // Pre-fill school from last session (fair mode)
-    const last = localStorage.getItem(LAST_SCHOOL_KEY);
-    if (last) setForm((f) => ({ ...f, school: last }));
-    // Load school list for autocomplete
-    fetch("/api/schools").then((r) => r.json()).then(setSchools);
+    loadSchools();
   }, []);
+
+  function loadSchools() {
+    return fetch("/api/schools").then((r) => r.json()).then(setSchools);
+  }
 
   function set(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSchoolSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const val = e.target.value;
+    if (val === "__add__") {
+      setAddingSchool(true);
+    } else {
+      set("school", val);
+    }
+  }
+
+  async function saveNewSchool() {
+    if (!newSchoolName.trim()) return;
+    await fetch("/api/schools", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newSchoolName.trim() }),
+    });
+    await loadSchools();
+    set("school", newSchoolName.trim());
+    setNewSchoolName("");
+    setAddingSchool(false);
+  }
+
+  async function submit(andAnother: boolean) {
     if (!form.name.trim()) return;
     setSaving(true);
-    // Remember school for next entry
-    if (form.school.trim()) localStorage.setItem(LAST_SCHOOL_KEY, form.school.trim());
     const res = await fetch("/api/applicants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -49,7 +71,17 @@ export default function NewApplicantPage() {
     });
     const data = await res.json();
     setSaving(false);
-    if (data.id) router.push(`/applicant/${data.id}`);
+    if (!data.id) return;
+
+    if (andAnother) {
+      // Keep school, reset everything else
+      const school = form.school;
+      setForm({ ...blank(), school });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } else {
+      router.push(`/applicant/${data.id}`);
+    }
   }
 
   return (
@@ -58,27 +90,37 @@ export default function NewApplicantPage() {
       <h1 className="page-title">Add applicant</h1>
       <p className="page-sub">Log a new inquiry or applicant into the pipeline.</p>
 
-      <form className="card form-card" onSubmit={handleSubmit}>
+      {saved && (
+        <div className="save-toast">✓ Applicant saved — form ready for next entry</div>
+      )}
+
+      <div className="card form-card">
         <div className="form-row">
-          <label>Name *</label>
-          <input value={form.name} onChange={(e) => set("name", e.target.value)} autoFocus required />
+          <label>School</label>
+          {addingSchool ? (
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                autoFocus
+                placeholder="School name"
+                value={newSchoolName}
+                onChange={(e) => setNewSchoolName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), saveNewSchool())}
+              />
+              <button type="button" className="btn btn-primary" onClick={saveNewSchool} style={{ whiteSpace: "nowrap" }}>Save</button>
+              <button type="button" className="btn" onClick={() => setAddingSchool(false)}>Cancel</button>
+            </div>
+          ) : (
+            <select value={form.school} onChange={handleSchoolSelect}>
+              <option value="">— Select a school —</option>
+              {schools.map((s) => <option key={s} value={s}>{s}</option>)}
+              <option value="__add__">+ Add new school</option>
+            </select>
+          )}
         </div>
 
         <div className="form-row">
-          <label>School</label>
-          <input
-            list="school-list"
-            value={form.school}
-            onChange={(e) => set("school", e.target.value)}
-            placeholder="Type or pick a school"
-            autoComplete="off"
-          />
-          <datalist id="school-list">
-            {schools.map((s) => <option key={s} value={s} />)}
-          </datalist>
-          {form.school && (
-            <p className="field-hint">This school will be pre-filled next time you add an applicant.</p>
-          )}
+          <label>Name *</label>
+          <input value={form.name} onChange={(e) => set("name", e.target.value)} required />
         </div>
 
         <div className="form-row">
@@ -119,13 +161,18 @@ export default function NewApplicantPage() {
 
         <div className="form-row">
           <label>Notes</label>
-          <textarea rows={4} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
+          <textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
         </div>
 
-        <button className="btn btn-primary btn-full" type="submit" disabled={saving}>
-          {saving ? "Saving..." : "Add applicant"}
-        </button>
-      </form>
+        <div className="form-actions">
+          <button className="btn btn-primary btn-full" onClick={() => submit(false)} disabled={saving}>
+            {saving ? "Saving..." : "Save & open"}
+          </button>
+          <button className="btn btn-full" onClick={() => submit(true)} disabled={saving}>
+            {saving ? "Saving..." : "Save & add another"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
