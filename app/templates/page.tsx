@@ -1,20 +1,29 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { STAGES, Template } from "@/lib/supabase";
+import { Template } from "@/lib/supabase";
+
+function preview(body: string) {
+  const words = body.trim().split(/\s+/).slice(0, 10).join(" ");
+  return words + (body.trim().split(/\s+/).length > 10 ? "…" : "");
+}
 
 export default function SnippetsPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ title: "", body: "" });
+  const [draft, setDraft] = useState({ title: "", body: "", category: "" });
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
-  const [newTpl, setNewTpl] = useState({ stage: "inquiry", title: "", body: "" });
+  const [newTpl, setNewTpl] = useState({ category: "", title: "", body: "" });
+  const [addingCatFor, setAddingCatFor] = useState<"new" | "edit" | null>(null);
+  const [newCatName, setNewCatName] = useState("");
   const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState("all");
   const [view, setView] = useState<"list" | "grid">("list");
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadCategories(); }, []);
 
   function load() {
     setLoading(true);
@@ -23,9 +32,27 @@ export default function SnippetsPage() {
       .then((data) => { setTemplates(Array.isArray(data) ? data : []); setLoading(false); });
   }
 
+  function loadCategories() {
+    return fetch("/api/snippet-categories").then((r) => r.json()).then(setCategories);
+  }
+
+  async function saveNewCategory(target: "new" | "edit") {
+    if (!newCatName.trim()) return;
+    await fetch("/api/snippet-categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newCatName.trim() }),
+    });
+    await loadCategories();
+    if (target === "new") setNewTpl((f) => ({ ...f, category: newCatName.trim() }));
+    if (target === "edit") setDraft((f) => ({ ...f, category: newCatName.trim() }));
+    setNewCatName("");
+    setAddingCatFor(null);
+  }
+
   function startEdit(t: Template) {
     setEditingId(t.id);
-    setDraft({ title: t.title, body: t.body });
+    setDraft({ title: t.title, body: t.body, category: t.category || "" });
   }
 
   async function saveEdit(id: string) {
@@ -56,30 +83,57 @@ export default function SnippetsPage() {
     await fetch("/api/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newTpl),
+      body: JSON.stringify({ ...newTpl, stage: "inquiry" }),
     });
-    setNewTpl({ stage: "inquiry", title: "", body: "" });
+    setNewTpl({ category: "", title: "", body: "" });
     setShowNew(false);
     load();
   }
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return templates;
-    const q = search.toLowerCase();
-    return templates.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.body.toLowerCase().includes(q) ||
-        t.stage.toLowerCase().includes(q)
+    let list = templates;
+    if (catFilter !== "all") list = list.filter((t) => t.category === catFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (t) => t.title.toLowerCase().includes(q) || t.body.toLowerCase().includes(q) || (t.category || "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [templates, search, catFilter]);
+
+  // Group by category for list view
+  const grouped = useMemo(() => {
+    const cats = [...new Set(filtered.map((t) => t.category || "Uncategorized"))].sort();
+    return cats.map((cat) => ({ cat, items: filtered.filter((t) => (t.category || "Uncategorized") === cat) }));
+  }, [filtered]);
+
+  function CategorySelect({ value, onChange, target }: { value: string; onChange: (v: string) => void; target: "new" | "edit" }) {
+    if (addingCatFor === target) {
+      return (
+        <div style={{ display: "flex", gap: 8 }}>
+          <input autoFocus placeholder="Category name" value={newCatName} onChange={(e) => setNewCatName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), saveNewCategory(target))} />
+          <button type="button" className="btn btn-primary" onClick={() => saveNewCategory(target)} style={{ whiteSpace: "nowrap" }}>Save</button>
+          <button type="button" className="btn" onClick={() => setAddingCatFor(null)}>Cancel</button>
+        </div>
+      );
+    }
+    return (
+      <select value={value} onChange={(e) => e.target.value === "__add__" ? setAddingCatFor(target) : onChange(e.target.value)}>
+        <option value="">— Select category —</option>
+        {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+        <option value="__add__">+ Add new category</option>
+      </select>
     );
-  }, [templates, search]);
+  }
 
   return (
     <div>
       <div className="detail-header">
         <div>
           <h1 className="page-title">Snippets</h1>
-          <p className="page-sub">Reusable outreach copy for each stage. Click Copy, then paste into your email.</p>
+          <p className="page-sub">Reusable outreach copy. Click Copy, then paste into your email.</p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowNew((s) => !s)}>
           {showNew ? "Cancel" : "+ New snippet"}
@@ -87,13 +141,11 @@ export default function SnippetsPage() {
       </div>
 
       {showNew && (
-        <form className="card" onSubmit={createTemplate} style={{ marginBottom: 24 }}>
+        <form className="card" onSubmit={createTemplate} style={{ marginBottom: 24, maxWidth: 640 }}>
           <div className="form-grid">
             <div className="form-row">
-              <label>Stage</label>
-              <select value={newTpl.stage} onChange={(e) => setNewTpl({ ...newTpl, stage: e.target.value })}>
-                {STAGES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
+              <label>Category</label>
+              <CategorySelect value={newTpl.category} onChange={(v) => setNewTpl((f) => ({ ...f, category: v }))} target="new" />
             </div>
             <div className="form-row">
               <label>Title</label>
@@ -108,42 +160,30 @@ export default function SnippetsPage() {
         </form>
       )}
 
-      {/* Toolbar */}
       <div className="toolbar" style={{ marginBottom: 20 }}>
-        <input
-          className="toolbar-search"
-          placeholder="Search snippets..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <input className="toolbar-search" placeholder="Search snippets..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        {categories.length > 0 && (
+          <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}>
+            <option value="all">All categories</option>
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
         <div className="view-toggle">
-          <button
-            className={`view-btn${view === "list" ? " active" : ""}`}
-            onClick={() => setView("list")}
-            title="List view"
-          >
-            ☰
-          </button>
-          <button
-            className={`view-btn${view === "grid" ? " active" : ""}`}
-            onClick={() => setView("grid")}
-            title="Grid view"
-          >
-            ⊞
-          </button>
+          <button className={`view-btn${view === "list" ? " active" : ""}`} onClick={() => setView("list")} title="List view">☰</button>
+          <button className={`view-btn${view === "grid" ? " active" : ""}`} onClick={() => setView("grid")} title="Grid view">⊞</button>
         </div>
       </div>
 
       {loading ? (
         <p style={{ color: "var(--text-dim)" }}>Loading...</p>
       ) : filtered.length === 0 ? (
-        <div className="card empty-state">No snippets match your search.</div>
+        <div className="card empty-state">No snippets match. Try clearing your search or adding a new one.</div>
       ) : view === "grid" ? (
         <div className="snippet-grid">
           {filtered.map((t) => (
             <div className="snippet-grid-card" key={t.id}>
               <div className="snippet-grid-top">
-                <span className={`badge badge-${t.stage}`}>{t.stage}</span>
+                {t.category && <span className="snippet-cat-tag">{t.category}</span>}
                 <button className="btn-x" onClick={() => deleteTemplate(t.id)} title="Delete">✕</button>
               </div>
               <h3 className="snippet-grid-title">{t.title}</h3>
@@ -154,6 +194,10 @@ export default function SnippetsPage() {
               </div>
               {editingId === t.id && (
                 <div style={{ marginTop: 12 }}>
+                  <div className="form-row">
+                    <label>Category</label>
+                    <CategorySelect value={draft.category} onChange={(v) => setDraft((f) => ({ ...f, category: v }))} target="edit" />
+                  </div>
                   <div className="form-row">
                     <label>Title</label>
                     <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
@@ -170,45 +214,47 @@ export default function SnippetsPage() {
           ))}
         </div>
       ) : (
-        STAGES.map((stage) => {
-          const stageSnippets = filtered.filter((t) => t.stage === stage.value);
-          if (stageSnippets.length === 0) return null;
-          return (
-            <div key={stage.value} style={{ marginBottom: 28 }}>
-              <h3 style={{ marginBottom: 10 }}>
-                <span className={`badge badge-${stage.value}`}>{stage.label}</span>
-              </h3>
-              {stageSnippets.map((t) => (
-                <div className="template-card" key={t.id}>
-                  {editingId === t.id ? (
-                    <>
-                      <div className="form-row">
-                        <label>Title</label>
-                        <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
-                      </div>
-                      <div className="form-row">
-                        <label>Body</label>
-                        <textarea rows={6} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
-                      </div>
-                      <button className="btn btn-primary" onClick={() => saveEdit(t.id)}>Save</button>{" "}
-                      <button className="btn" onClick={() => setEditingId(null)}>Cancel</button>
-                    </>
-                  ) : (
-                    <>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <h3>{t.title}</h3>
-                        <button className="btn-x" onClick={() => deleteTemplate(t.id)} title="Delete">✕</button>
-                      </div>
-                      <pre>{t.body}</pre>
-                      <button className="btn" onClick={() => copy(t)}>{copiedId === t.id ? "Copied!" : "Copy"}</button>{" "}
+        grouped.map(({ cat, items }) => (
+          <div key={cat} style={{ marginBottom: 28 }}>
+            <h3 style={{ marginBottom: 10 }}>
+              <span className="snippet-cat-tag snippet-cat-tag-lg">{cat}</span>
+            </h3>
+            {items.map((t) => (
+              <div className="template-card" key={t.id}>
+                {editingId === t.id ? (
+                  <>
+                    <div className="form-row">
+                      <label>Category</label>
+                      <CategorySelect value={draft.category} onChange={(v) => setDraft((f) => ({ ...f, category: v }))} target="edit" />
+                    </div>
+                    <div className="form-row">
+                      <label>Title</label>
+                      <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+                    </div>
+                    <div className="form-row">
+                      <label>Body</label>
+                      <textarea rows={6} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
+                    </div>
+                    <button className="btn btn-primary" onClick={() => saveEdit(t.id)}>Save</button>{" "}
+                    <button className="btn" onClick={() => setEditingId(null)}>Cancel</button>
+                  </>
+                ) : (
+                  <div className="snippet-list-row">
+                    <div className="snippet-list-text">
+                      <div className="snippet-list-title">{t.title}</div>
+                      <div className="snippet-list-preview">{preview(t.body)}</div>
+                    </div>
+                    <div className="snippet-list-actions">
+                      <button className="btn" onClick={() => copy(t)}>{copiedId === t.id ? "Copied!" : "Copy"}</button>
                       <button className="btn" onClick={() => startEdit(t)}>Edit</button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          );
-        })
+                      <button className="btn-x" onClick={() => deleteTemplate(t.id)} title="Delete">✕</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ))
       )}
     </div>
   );

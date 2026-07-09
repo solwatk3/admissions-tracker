@@ -39,6 +39,7 @@ export type ContactLogEntry = {
 export type Template = {
   id: string;
   stage: Stage;
+  category: string | null;
   title: string;
   body: string;
   created_at: string;

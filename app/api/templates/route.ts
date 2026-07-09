@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { data, error } = await supabase
     .from("templates")
-    .insert({ stage: body.stage, title: body.title, body: body.body })
+    .insert({ stage: body.stage, category: body.category || null, title: body.title, body: body.body })
     .select()
     .single();
 
