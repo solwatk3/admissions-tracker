@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Applicant, ContactLogEntry, STAGES } from "@/lib/supabase";
 import { formatDate, todayStr } from "@/lib/dates";
 
+
 export default function ApplicantDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -17,9 +18,11 @@ export default function ApplicantDetailPage() {
   const [saving, setSaving] = useState(false);
   const [newEntry, setNewEntry] = useState("");
   const [newFollowup, setNewFollowup] = useState("");
+  const [schools, setSchools] = useState<string[]>([]);
 
   useEffect(() => {
     load();
+    fetch("/api/schools").then((r) => r.json()).then(setSchools);
   }, [id]);
 
   function load() {
@@ -105,6 +108,19 @@ export default function ApplicantDetailPage() {
               <label>Phone</label>
               <input defaultValue={applicant.phone || ""} onBlur={(e) => updateField("phone", e.target.value)} />
             </div>
+          </div>
+          <div className="form-row">
+            <label>School</label>
+            <input
+              list="school-list-detail"
+              defaultValue={applicant.school || ""}
+              onBlur={(e) => updateField("school", e.target.value)}
+              placeholder="Type or pick a school"
+              autoComplete="off"
+            />
+            <datalist id="school-list-detail">
+              {schools.map((s) => <option key={s} value={s} />)}
+            </datalist>
           </div>
           <div className="form-row">
             <label>Program</label>

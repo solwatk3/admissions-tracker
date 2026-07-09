@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
       email: body.email || null,
       phone: body.phone || null,
       program: body.program || null,
+      school: body.school || null,
       stage: body.stage || "inquiry",
       stage_date: body.stage_date || new Date().toISOString().slice(0, 10),
       next_followup: body.next_followup || null,

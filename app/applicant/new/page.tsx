@@ -1,24 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { STAGES } from "@/lib/supabase";
 import { todayStr } from "@/lib/dates";
 
+const LAST_SCHOOL_KEY = "admissions_last_school";
+
 export default function NewApplicantPage() {
   const router = useRouter();
+  const [schools, setSchools] = useState<string[]>([]);
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
     program: "",
+    school: "",
     stage: "inquiry",
     stage_date: todayStr(),
     next_followup: "",
     notes: "",
   });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    // Pre-fill school from last session (fair mode)
+    const last = localStorage.getItem(LAST_SCHOOL_KEY);
+    if (last) setForm((f) => ({ ...f, school: last }));
+    // Load school list for autocomplete
+    fetch("/api/schools").then((r) => r.json()).then(setSchools);
+  }, []);
 
   function set(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -28,6 +40,8 @@ export default function NewApplicantPage() {
     e.preventDefault();
     if (!form.name.trim()) return;
     setSaving(true);
+    // Remember school for next entry
+    if (form.school.trim()) localStorage.setItem(LAST_SCHOOL_KEY, form.school.trim());
     const res = await fetch("/api/applicants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -44,11 +58,34 @@ export default function NewApplicantPage() {
       <h1 className="page-title">Add applicant</h1>
       <p className="page-sub">Log a new inquiry or applicant into the pipeline.</p>
 
-      <form className="card" onSubmit={handleSubmit} style={{ maxWidth: 640 }}>
+      <form className="card form-card" onSubmit={handleSubmit}>
         <div className="form-row">
           <label>Name *</label>
           <input value={form.name} onChange={(e) => set("name", e.target.value)} autoFocus required />
         </div>
+
+        <div className="form-row">
+          <label>School</label>
+          <input
+            list="school-list"
+            value={form.school}
+            onChange={(e) => set("school", e.target.value)}
+            placeholder="Type or pick a school"
+            autoComplete="off"
+          />
+          <datalist id="school-list">
+            {schools.map((s) => <option key={s} value={s} />)}
+          </datalist>
+          {form.school && (
+            <p className="field-hint">This school will be pre-filled next time you add an applicant.</p>
+          )}
+        </div>
+
+        <div className="form-row">
+          <label>Program / interest</label>
+          <input value={form.program} onChange={(e) => set("program", e.target.value)} />
+        </div>
+
         <div className="form-grid">
           <div className="form-row">
             <label>Email</label>
@@ -59,10 +96,7 @@ export default function NewApplicantPage() {
             <input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
           </div>
         </div>
-        <div className="form-row">
-          <label>Program / interest</label>
-          <input value={form.program} onChange={(e) => set("program", e.target.value)} />
-        </div>
+
         <div className="form-grid">
           <div className="form-row">
             <label>Stage</label>
@@ -77,15 +111,18 @@ export default function NewApplicantPage() {
             <input type="date" value={form.stage_date} onChange={(e) => set("stage_date", e.target.value)} />
           </div>
         </div>
+
         <div className="form-row">
           <label>Next follow-up date</label>
           <input type="date" value={form.next_followup} onChange={(e) => set("next_followup", e.target.value)} />
         </div>
+
         <div className="form-row">
           <label>Notes</label>
           <textarea rows={4} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
         </div>
-        <button className="btn btn-primary" type="submit" disabled={saving}>
+
+        <button className="btn btn-primary btn-full" type="submit" disabled={saving}>
           {saving ? "Saving..." : "Add applicant"}
         </button>
       </form>

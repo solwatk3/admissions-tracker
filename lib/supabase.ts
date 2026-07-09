@@ -19,6 +19,7 @@ export type Applicant = {
   email: string | null;
   phone: string | null;
   program: string | null;
+  school: string | null;
   stage: Stage;
   stage_date: string;
   last_contact: string | null;
