@@ -6,12 +6,16 @@ import Link from "next/link";
 import { STAGES } from "@/lib/supabase";
 import { todayStr } from "@/lib/dates";
 
+const currentYear = new Date().getFullYear();
+const CLASS_YEARS = Array.from({ length: 6 }, (_, i) => currentYear + i - 1);
+
 const blank = () => ({
   name: "",
   email: "",
   phone: "",
   program: "",
   school: "",
+  class_year: "",
   stage: "inquiry",
   stage_date: todayStr(),
   next_followup: "",
@@ -123,9 +127,18 @@ export default function NewApplicantPage() {
           <input value={form.name} onChange={(e) => set("name", e.target.value)} required />
         </div>
 
-        <div className="form-row">
-          <label>Program / interest</label>
-          <input value={form.program} onChange={(e) => set("program", e.target.value)} />
+        <div className="form-grid">
+          <div className="form-row">
+            <label>Program / interest</label>
+            <input value={form.program} onChange={(e) => set("program", e.target.value)} />
+          </div>
+          <div className="form-row">
+            <label>Class year</label>
+            <select value={form.class_year} onChange={(e) => set("class_year", e.target.value)}>
+              <option value="">— Select year —</option>
+              {CLASS_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
         </div>
 
         <div className="form-grid">

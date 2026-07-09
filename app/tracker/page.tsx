@@ -13,6 +13,7 @@ export default function TrackerPage() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
   const [schoolFilter, setSchoolFilter] = useState("all");
+  const [yearFilter, setYearFilter] = useState("all");
   const [sortKey, setSortKey] = useState<"next_followup" | "name" | "stage_date">("next_followup");
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function TrackerPage() {
     let list = applicants;
     if (stageFilter !== "all") list = list.filter((a) => a.stage === stageFilter);
     if (schoolFilter !== "all") list = list.filter((a) => a.school === schoolFilter);
+    if (yearFilter !== "all") list = list.filter((a) => String(a.class_year) === yearFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -61,7 +63,12 @@ export default function TrackerPage() {
       return a.next_followup.localeCompare(b.next_followup);
     });
     return list;
-  }, [applicants, search, stageFilter, schoolFilter, sortKey]);
+  }, [applicants, search, stageFilter, schoolFilter, yearFilter, sortKey]);
+
+  const classYears = useMemo(() =>
+    [...new Set(applicants.map((a) => a.class_year).filter(Boolean) as number[])].sort(),
+    [applicants]
+  );
 
   return (
     <div>
@@ -89,9 +96,15 @@ export default function TrackerPage() {
         {schools.length > 0 && (
           <select value={schoolFilter} onChange={(e) => setSchoolFilter(e.target.value)}>
             <option value="all">All schools</option>
-            {schools.map((s) => (
-              <option key={s} value={s}>{s}</option>
+            {schools.map((s: any) => (
+              <option key={s.name || s} value={s.name || s}>{s.name || s}</option>
             ))}
+          </select>
+        )}
+        {classYears.length > 0 && (
+          <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
+            <option value="all">All class years</option>
+            {classYears.map((y) => <option key={y} value={String(y)}>Class of {y}</option>)}
           </select>
         )}
         <select value={sortKey} onChange={(e) => setSortKey(e.target.value as any)}>

@@ -20,11 +20,36 @@ export type Applicant = {
   phone: string | null;
   program: string | null;
   school: string | null;
+  class_year: number | null;
   stage: Stage;
   stage_date: string;
   last_contact: string | null;
   next_followup: string | null;
   decision: "pending" | "accepted" | "denied" | "waitlisted" | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type School = {
+  id: string;
+  name: string;
+  county: string | null;
+  address: string | null;
+  phone: string | null;
+  website: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+export type Counselor = {
+  id: string;
+  school_id: string | null;
+  school_name?: string | null;
+  school_county?: string | null;
+  name: string;
+  title: string | null;
+  email: string | null;
+  phone: string | null;
   notes: string | null;
   created_at: string;
 };

@@ -3,12 +3,20 @@ import { supabase } from "@/lib/supabase";
 
 export async function GET() {
   const { data, error } = await supabase
-    .from("schools")
-    .select("*")
+    .from("counselors")
+    .select("*, schools(name, county)")
     .order("name");
 
   if (error) return NextResponse.json([], { status: 500 });
-  return NextResponse.json(data);
+
+  const flat = (data as any[]).map((c) => ({
+    ...c,
+    school_name: c.schools?.name || null,
+    school_county: c.schools?.county || null,
+    schools: undefined,
+  }));
+
+  return NextResponse.json(flat);
 }
 
 export async function POST(req: NextRequest) {
@@ -16,21 +24,18 @@ export async function POST(req: NextRequest) {
   if (!body.name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
 
   const { data, error } = await supabase
-    .from("schools")
+    .from("counselors")
     .insert({
+      school_id: body.school_id || null,
       name: body.name.trim(),
-      county: body.county || null,
-      address: body.address || null,
+      title: body.title || null,
+      email: body.email || null,
       phone: body.phone || null,
-      website: body.website || null,
       notes: body.notes || null,
     })
     .select()
     .single();
 
-  if (error) {
-    if (error.code === "23505") return NextResponse.json({ error: "School already exists" }, { status: 409 });
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }

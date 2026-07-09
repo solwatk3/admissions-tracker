@@ -122,9 +122,20 @@ export default function ApplicantDetailPage() {
               {schools.map((s) => <option key={s} value={s} />)}
             </datalist>
           </div>
-          <div className="form-row">
-            <label>Program</label>
-            <input defaultValue={applicant.program || ""} onBlur={(e) => updateField("program", e.target.value)} />
+          <div className="form-grid">
+            <div className="form-row">
+              <label>Program</label>
+              <input defaultValue={applicant.program || ""} onBlur={(e) => updateField("program", e.target.value)} />
+            </div>
+            <div className="form-row">
+              <label>Class year</label>
+              <select defaultValue={applicant.class_year || ""} onChange={(e) => updateField("class_year", e.target.value)}>
+                <option value="">— Select year —</option>
+                {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() + i - 1).map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="form-grid">
             <div className="form-row">
